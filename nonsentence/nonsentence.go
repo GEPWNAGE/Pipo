@@ -53,38 +53,55 @@ func (ns *Nonsentence) Close() error {
 // Add a sentence to to the database
 func (ns *Nonsentence) Add(sentence string) error {
 	return ns.db.Update(func(tx *bolt.Tx) error {
-		wordsBucket := tx.Bucket([]byte("words"))
-		startsBucket := tx.Bucket([]byte("starts"))
-		if (wordsBucket == nil) || (startsBucket == nil) {
-			return fmt.Errorf("Buckets not found")
-		}
-		
-		// Split sentence on whitespace
-		var words = strings.Fields(sentence)
-		
-		if len(words) < 3 {
-			log.Printf("Ignoring small sentence: %v", sentence)
-			return nil
-		}
-		
-		// Store words in wordsBucket
-		for i := 2; i < len(words); i++ {
-			if err := storeWords(wordsBucket, words[i-2], words[i-1], words[i]); err != nil {
+		return ns.addSentence(tx, sentence)
+	})
+}
+
+// Add multiple sentenctes to the database
+func (ns *Nonsentence) AddMultiple(sentences []string) error {
+	return ns.db.Update(func(tx *bolt.Tx) error {
+		for _, sentence := range sentences {
+			if err := ns.addSentence(tx, sentence); err != nil {
 				return err
 			}
 		}
-		if err := storeWords(wordsBucket, words[len(words)-2], words[len(words)-1], ""); err != nil {
-			return err
-		}
-		
-		// Store starts in startsBucket
-		key := []byte(words[0] + " " + words[1])
-		if err := startsBucket.Put(key, []byte{}); err != nil {
-			return err
-		}
-		
 		return nil
 	})
+}
+
+// Add a single sentence to the database
+func (ns *Nonsentence) addSentence(tx *bolt.Tx, sentence string) error {
+	wordsBucket := tx.Bucket([]byte("words"))
+	startsBucket := tx.Bucket([]byte("starts"))
+	if (wordsBucket == nil) || (startsBucket == nil) {
+		return fmt.Errorf("Buckets not found")
+	}
+	
+	// Split sentence on whitespace
+	var words = strings.Fields(sentence)
+	
+	if len(words) < 3 {
+// 		log.Printf("Ignoring small sentence: %v", sentence)
+		return nil
+	}
+	
+	// Store words in wordsBucket
+	for i := 2; i < len(words); i++ {
+		if err := storeWords(wordsBucket, words[i-2], words[i-1], words[i]); err != nil {
+			return err
+		}
+	}
+	if err := storeWords(wordsBucket, words[len(words)-2], words[len(words)-1], ""); err != nil {
+		return err
+	}
+	
+	// Store starts in startsBucket
+	key := []byte(words[0] + " " + words[1])
+	if err := startsBucket.Put(key, []byte{}); err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 // Store a word,word -> word sequence

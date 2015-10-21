@@ -41,13 +41,13 @@ func main() {
 		log.Printf("Message to %v: %v", line.Target(), line.Text())
 		// If a channel message is received, store it
 		if line.Target() == channel {
-			// Ignore first word if it ends with a ':'
+			// If the message mentioned my name, reply
+			if strings.Contains(line.Text(), nickname) {
+				saySomething(client, channel, ns)
+			}
+						// Ignore first word if it ends with a ':'
 			var words = strings.Fields(line.Text())
 			if (len(words) > 0) && strings.HasSuffix(words[0], ":") {
-				// If the message was directed at me, reply
-				if words[0] == nickname + ":" {
-					saySomething(client, channel, ns)
-				}
 				words = words[1:]
 			}
 			if err := ns.Add(strings.Join(words, " ")); err != nil {
